@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MediQuick Pharmacy – Nakuru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp }                                                        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAvXOUqDHO24q5mxRsE2LHvxSC3tAZmgWQ",
+    authDomain: "medquick-f44ce.firebaseapp.com",
+    projectId: "medquick-f44ce",
+    storageBucket: "medquick-f44ce.firebasestorage.app",
+    messagingSenderId: "234976429946",
+    appId: "1:234976429946:web:8a3deda61ba9f5a2a5f8c3"
+  };
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+    window.__db = db;
+    window.__firebase = { collection, addDoc, getDocs, deleteDoc, doc, updateDoc };
+    window.__fbReady = true;
+  } catch(e) {
+    console.warn('Firebase init failed:', e);
+    window.__fbReady = false;
+  }
+  window.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<style>
+/* ════════════════════════════════
+   SHARED VARIABLES & RESET
+════════════════════════════════ */
+:root {
+  --green:#10b981; --green-dark:#059669; --green-light:#d1fae5;
+  --blue:#0ea5e9;  --blue-dark:#0369a1;  --blue-light:#e0f2fe;
+  --red:#ef4444;   --red-light:#fee2e2;
+  --amber:#f59e0b; --amber-light:#fef3c7;
+  --wa:#25D366;
+  --white:#fff; --gray-50:#f8fafc; --gray-100:#f1f5f9;
+  --gray-200:#e2e8f0; --gray-400:#94a3b8; --gray-600:#475569; --gray-800:#1e293b;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,.10);
+  --radius:14px;
+  --sidebar-w:240px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh}
+
+/* ════════════════════════════════
+   PAGE SWITCHER
+════════════════════════════════ */
+.page{display:none}
+.page.active{display:block}
+#adminPage{display:none}
+#adminPage.active{display:flex;min-height:100vh}
+
+/* ════════════════════════════════
+   ── STOREFRONT ──
+════════════════════════════════ */
+/* Header */
+.sf-header{background:var(--white);border-bottom:1px solid var(--gray-200);position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+.header-inner{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;cursor:pointer}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--green),var(--blue));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.logo-name{font-family:'Playfair Display',serif;font-size:18px;color:var(--gray-800);display:block}
+.logo-tagline{font-size:11px;color:var(--gray-400);display:block;letter-spacing:.4px}
+.header-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.btn-rx{background:linear-gradient(135deg,var(--blue),var(--blue-dark));color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:opacity .2s;font-family:inherit}
+.btn-rx:hover{opacity:.88}
+.btn-wa-hdr{background:var(--wa);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;text-decoration:none;transition:opacity .2s}
+.btn-wa-hdr:hover{opacity:.88}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,#f0fdf4,#e0f2fe);border-bottom:1px solid var(--gray-200);padding:28px 16px 24px;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(22px,5vw,36px);margin-bottom:8px}
+.hero p{font-size:14px;color:var(--gray-600);max-width:480px;margin:0 auto 18px}
+.hero-badges{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+.badge{background:var(--white);border:1px solid var(--gray-200);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--gray-600);display:flex;align-items:center;gap:5px}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+
+/* Search + Filters */
+.controls{max-width:1200px;margin:0 auto;padding:20px 16px 0}
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--white);border:1.5px solid var(--gray-200);border-radius:12px;padding:10px 14px;margin-bottom:14px;box-shadow:var(--shadow-sm);transition:border-color .2s}
+.search-bar:focus-within{border-color:var(--green)}
+.search-bar input{border:none;outline:none;flex:1;font-family:inherit;font-size:14px;background:transparent;color:var(--gray-800)}
+.search-bar input::placeholder{color:var(--gray-400)}
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat-btn{flex-shrink:0;background:var(--white);border:1.5px solid var(--gray-200);border-radius:20px;padding:6px 14px;font-size:13px;font-family:inherit;font-weight:500;color:var(--gray-600);cursor:pointer;transition:all .2s;white-space:nowrap}
+.cat-btn.active,.cat-btn:hover{background:var(--green);border-color:var(--green);color:#fff}
+
+/* Product Grid */
+.grid-section{max-width:1200px;margin:0 auto;padding:20px 16px 40px}
+.results-count{font-size:13px;color:var(--gray-400);margin-bottom:14px}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+@media(min-width:640px){.product-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px}}
+.product-card{background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-200);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s;animation:fadeUp .35s ease both}
+.product-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--gray-100);display:block}
+.card-img-placeholder{width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,var(--green-light),var(--blue-light));display:flex;align-items:center;justify-content:center;font-size:36px}
+.card-body{padding:12px;flex:1;display:flex;flex-direction:column;gap:4px}
+.card-cat{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--blue);background:var(--blue-light);border-radius:4px;padding:2px 6px;width:fit-content}
+.card-name{font-size:14px;font-weight:600;color:var(--gray-800);line-height:1.3;flex:1}
+.card-price{font-size:16px;font-weight:700;color:var(--green-dark)}
+.card-footer{padding:0 12px 12px}
+.oos-badge{display:block;width:100%;text-align:center;background:var(--gray-100);color:var(--gray-400);border-radius:8px;padding:8px;font-size:13px;font-weight:500}
+.btn-order{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--wa);color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;transition:opacity .2s}
+.btn-order:hover{opacity:.88}
+
+/* Skeleton */
+.skeleton{background:linear-gradient(90deg,var(--gray-100) 25%,var(--gray-200) 50%,var(--gray-100) 75%);background-size:200%;animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-200);overflow:hidden}
+.skel-img{width:100%;aspect-ratio:4/3}
+.skel-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.skel-line{border-radius:6px;height:12px}
+
+/* Empty state */
+.empty{text-align:center;padding:60px 16px;color:var(--gray-400)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty h3{font-size:16px;color:var(--gray-600);margin-bottom:6px}
+
+/* Prescription Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:20px 20px 0 0;padding:28px 20px 36px;width:100%;max-width:500px;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h2{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:6px}
+.modal p{font-size:14px;color:var(--gray-600);margin-bottom:20px}
+.modal-actions{display:flex;flex-direction:column;gap:10px}
+.btn-modal{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .2s}
+.btn-modal:hover{opacity:.88}
+.btn-modal.camera{background:var(--green);color:#fff}
+.btn-modal.gallery{background:var(--blue);color:#fff}
+.btn-cancel-modal{background:none;border:none;font-family:inherit;font-size:14px;color:var(--gray-400);cursor:pointer;text-align:center;margin-top:6px;width:100%}
+
+/* ════════════════════════════════
+   ── ADMIN LOGIN ──
+════════════════════════════════ */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#f0fdf4,#e0f2fe);position:fixed;inset:0;z-index:500}
+.login-card{background:var(--white);border-radius:20px;padding:40px 32px;box-shadow:0 8px 40px rgba(0,0,0,.12);width:100%;max-width:380px;text-align:center}
+.login-icon{font-size:48px;margin-bottom:12px}
+.login-card h1{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:6px}
+.login-card p{font-size:14px;color:var(--gray-400);margin-bottom:28px}
+.lform-group{text-align:left;margin-bottom:16px}
+.lform-group label{display:block;font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:6px}
+.form-input{width:100%;border:1.5px solid var(--gray-200);border-radius:10px;padding:11px 14px;font-family:inherit;font-size:14px;color:var(--gray-800);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--green)}
+.btn-login{width:100%;background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .2s;margin-top:4px}
+.btn-login:hover{opacity:.88}
+.login-error{background:var(--red-light);color:var(--red);border-radius:8px;padding:10px;font-size:13px;margin-top:12px;display:none}
+.pw-wrap{position:relative;display:flex;align-items:center}
+.pw-wrap .form-input{width:100%}
+.pw-eye{position:absolute;right:12px;background:none;border:none;cursor:pointer;color:var(--gray-400);padding:0;display:flex;align-items:center;transition:color .2s;flex-shrink:0}
+.pw-eye:hover{color:var(--green)}
+.pw-eye svg{width:18px;height:18px}
+
+/* ════════════════════════════════
+   ── ADMIN DASHBOARD ──
+════════════════════════════════ */
+.sidebar{width:var(--sidebar-w);background:var(--gray-800);padding:24px 16px;display:flex;flex-direction:column;flex-shrink:0;position:fixed;height:100vh;overflow-y:auto;z-index:50;left:0;top:0;transition:transform .3s}
+.sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;padding:0 4px}
+.sidebar-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--green),var(--blue));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sidebar-logo-name{color:#fff;font-weight:700;font-size:15px}
+.sidebar-logo-sub{color:var(--gray-400);font-size:11px}
+.nav-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;padding:0 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--gray-400);text-decoration:none;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:4px;transition:all .2s;background:none;border:none;font-family:inherit;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:var(--green-dark);color:#fff}
+.sidebar-footer{margin-top:auto;padding-top:20px}
+.btn-logout{width:100%;background:rgba(239,68,68,.15);color:#fc8181;border:none;border-radius:10px;padding:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.btn-logout:hover{opacity:.75}
+
+.admin-main{margin-left:var(--sidebar-w);flex:1;padding:28px 24px;max-width:calc(100vw - var(--sidebar-w));min-height:100vh}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-title{font-family:'Playfair Display',serif;font-size:26px}
+.page-sub{font-size:14px;color:var(--gray-400);margin-top:2px}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
+.stat-card{background:var(--white);border-radius:14px;border:1px solid var(--gray-200);padding:18px 20px}
+.stat-label{font-size:12px;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:700;color:var(--gray-800);line-height:1}
+
+/* Panel */
+.panel{background:var(--white);border-radius:14px;border:1px solid var(--gray-200);overflow:hidden;margin-bottom:20px}
+.panel-head{padding:18px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.panel-head h2{font-size:16px;font-weight:700}
+.panel-body{padding:20px}
+
+/* Add Form */
+.add-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.add-form{grid-template-columns:1fr}}
+.fg label{display:block;font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:6px}
+.fg input,.fg select{width:100%;border:1.5px solid var(--gray-200);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:14px;color:var(--gray-800);outline:none;transition:border-color .2s;background:var(--white)}
+.fg input:focus,.fg select:focus{border-color:var(--green)}
+.fg.full{grid-column:1/-1}
+.img-upload-area{border:2px dashed var(--gray-200);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;position:relative;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.img-upload-area:hover{border-color:var(--green)}
+.img-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.img-preview-thumb{width:60px;height:60px;object-fit:cover;border-radius:8px;display:none}
+.upload-label{font-size:13px;color:var(--gray-400)}
+.btn-add{grid-column:1/-1;background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .2s}
+.btn-add:hover{opacity:.88}
+.btn-add:disabled{opacity:.5;cursor:not-allowed}
+
+/* Table */
+.product-table{width:100%;border-collapse:collapse}
+.product-table th{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--gray-400);padding:10px 14px;text-align:left;border-bottom:1px solid var(--gray-200)}
+.product-table td{padding:12px 14px;border-bottom:1px solid var(--gray-100);font-size:14px;vertical-align:middle}
+.product-table tr:last-child td{border-bottom:none}
+.product-table tr:hover td{background:var(--gray-50)}
+.tbl-thumb{width:44px;height:44px;border-radius:8px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden}
+.tbl-thumb img{width:100%;height:100%;object-fit:cover}
+.tbl-name{font-weight:600}
+.tbl-cat{background:var(--blue-light);color:var(--blue);font-size:11px;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap}
+.tbl-price{font-weight:700;color:var(--green-dark)}
+.badge-in{background:var(--green-light);color:var(--green-dark);font-size:11px;font-weight:600;border-radius:20px;padding:3px 10px;white-space:nowrap}
+.badge-out{background:var(--amber-light);color:var(--amber);font-size:11px;font-weight:600;border-radius:20px;padding:3px 10px;white-space:nowrap}
+.tbl-actions{display:flex;gap:6px;align-items:center}
+.btn-tbl{border:none;border-radius:7px;padding:6px 10px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.btn-tbl:hover{opacity:.8}
+.btn-toggle-in{background:var(--amber-light);color:var(--amber)}
+.btn-toggle-out{background:var(--green-light);color:var(--green-dark)}
+.btn-del{background:var(--red-light);color:var(--red)}
+.tbl-wrap{overflow-x:auto}
+
+/* Table search */
+.tbl-search{display:flex;align-items:center;gap:8px;border:1.5px solid var(--gray-200);border-radius:10px;padding:8px 12px;background:var(--white);max-width:260px}
+.tbl-search input{border:none;outline:none;font-family:inherit;font-size:13px;color:var(--gray-800);background:transparent;width:100%}
+
+/* Admin section visibility */
+.admin-section{display:none}
+.admin-section.active{display:block}
+
+/* Mobile hamburger */
+.hamburger{display:none;background:none;border:none;font-size:22px;cursor:pointer;padding:4px;margin-bottom:16px}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .admin-main{margin-left:0;max-width:100vw;padding:16px}
+  .hamburger{display:block}
+  .header-actions .btn-wa-hdr span{display:none}
+}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--gray-800);color:#fff;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;max-width:300px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:var(--green-dark)}
+.toast.error{background:var(--red)}
+
+/* SVG icons helper */
+svg.ico{width:16px;height:16px;fill:currentColor;flex-shrink:0}
+
+/* ── FOOTER ── */
+.sf-footer{background:var(--gray-800);color:var(--gray-400);text-align:center;padding:20px 16px;font-size:13px;line-height:1.8}
+.sf-footer a,.terms-link{color:var(--green);text-decoration:none}
+.sf-footer a:hover,.terms-link:hover{text-decoration:underline}
+
+/* ── TERMS MODAL ── */
+.terms-modal{border-radius:20px 20px 0 0;padding:0;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.terms-modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--gray-200);flex-shrink:0}
+.terms-modal-header h2{font-family:'Playfair Display',serif;font-size:17px;color:var(--gray-800)}
+.terms-modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--gray-400);padding:4px 8px;border-radius:6px;transition:background .2s}
+.terms-modal-close:hover{background:var(--gray-100)}
+.terms-modal-body{overflow-y:auto;padding:20px 24px;flex:1}
+.terms-modal-footer{padding:16px 24px;border-top:1px solid var(--gray-200);flex-shrink:0;display:flex}
+.tm-disclaimer{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:12px 14px;font-size:13px;line-height:1.6;color:var(--gray-600);margin-bottom:20px}
+.tm-disclaimer strong{color:var(--gray-800)}
+.tm-list{list-style:none;display:flex;flex-direction:column;gap:18px}
+.tm-list li{display:flex;align-items:flex-start;gap:12px}
+.tm-icon{flex-shrink:0;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px}
+.tm-blue{background:var(--blue-light);color:var(--blue)}
+.tm-red{background:#fee2e2;color:#ef4444;font-family:'Playfair Display',serif;font-size:16px}
+.tm-amber{background:#fef3c7;color:#f59e0b}
+.tm-green{background:var(--green-light);color:var(--green-dark)}
+.tm-purple{background:#ede9fe;color:#7c3aed;font-size:15px}
+.tm-list li > div > strong{display:block;font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:4px}
+.tm-list li > div > p{font-size:13px;line-height:1.65;color:var(--gray-600);margin:0}
+.tm-list li > div > p strong{color:var(--gray-800)}
+</style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║            STOREFRONT PAGE              ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="storefrontPage" class="page active">
+
+  <!-- Header -->
+  <header class="sf-header">
+    <div class="header-inner">
+      <div class="logo" onclick="void(0)">
+        <div class="logo-icon">💊</div>
+        <div>
+          <span class="logo-name">MediQuick</span>
+          <span class="logo-tagline">Nakuru's Trusted Pharmacy</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-rx" onclick="openRxModal()">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8zm0-4h8v2H8z"/></svg>
+          Prescription
+        </button>
+        <a class="btn-wa-hdr" id="headerWaLink" href="#" target="_blank">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+          <span>Chat</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Medicine Delivered Fast 🚀</h1>
+    <p>Order on WhatsApp. We deliver to your door in Nakuru. No queues, no hassle.</p>
+    <div class="hero-badges">
+      <div class="badge"><span class="dot"></span>Open 7am–10pm</div>
+      <div class="badge"><span class="dot"></span>Fast Delivery</div>
+      <div class="badge"><span class="dot"></span>Authentic Medicines</div>
+      <div class="badge"><span class="dot"></span>KEBS Certified</div>
+    </div>
+  </section>
+
+  <!-- Search + Filters -->
+  <div class="controls">
+    <div class="search-bar">
+      <svg class="ico" style="fill:#94a3b8" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input type="text" id="searchInput" placeholder="Search medicines, vitamins, baby care…" oninput="applyFilters()"/>
+      <button onclick="document.getElementById('searchInput').value='';applyFilters()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px;padding:0">✕</button>
+    </div>
+    <div class="cats" id="catBar"></div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-section">
+    <div class="results-count" id="resultsCount"></div>
+    <div class="product-grid" id="productGrid"></div>
+  </div>
+
+  <!-- Prescription Modal -->
+  <div class="modal-overlay" id="rxModal" onclick="if(event.target===this)closeRxModal()">
+    <div class="modal">
+      <h2>📋 Upload Prescription</h2>
+      <p>Send your prescription photo directly to our pharmacist on WhatsApp. We'll confirm availability and price within minutes.</p>
+      <div class="modal-actions">
+        <button class="btn-modal camera" onclick="openRxWA()">📷 Take Photo / Open Gallery</button>
+      </div>
+      <button class="btn-cancel-modal" onclick="closeRxModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="sf-footer">
+    <p>MediQuick Pharmacy &middot; Nakuru, Kenya &middot; <a id="footerPhone" href="#">+254 101 514 612</a></p>
+    <p style="margin-top:6px">
+      &copy; 2025 MediQuick. All rights reserved. &nbsp;&middot;&nbsp;
+      <a href="#" onclick="event.preventDefault();openTermsModal()" class="terms-link">Terms &amp; Medical Disclaimer</a>
+      &nbsp;&middot;&nbsp;
+      <a href="#" onclick="event.preventDefault();showAdminGate()" class="terms-link">Staff Login</a>
+    </p>
+  </footer>
+
+  <!-- ── TERMS MODAL ── -->
+  <div class="modal-overlay" id="termsModal" onclick="if(event.target===this)closeTermsModal()">
+    <div class="modal terms-modal">
+      <div class="terms-modal-header">
+        <h2>&#128203; Medical Disclaimer &amp; Terms of Service</h2>
+        <button class="terms-modal-close" onclick="closeTermsModal()">&#10005;</button>
+      </div>
+      <div class="terms-modal-body">
+
+        <div class="tm-disclaimer">
+          <strong>&#9888;&#65039; Medical Disclaimer:</strong> The information on this website is for <strong>informational purposes only</strong> and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of a qualified pharmacist or doctor before starting, stopping, or changing any medication.
+        </div>
+
+        <ul class="tm-list">
+          <li>
+            <div class="tm-icon tm-blue">01</div>
+            <div>
+              <strong>No Medical Advice</strong>
+              <p>The information provided on this website is for informational purposes only and is <strong>not a substitute for professional medical advice</strong>, diagnosis, or treatment. Always seek the advice of a qualified pharmacist or doctor regarding any questions about a medical condition or medication.</p>
+            </div>
+          </li>
+          <li>
+            <div class="tm-icon tm-red">&#8479;</div>
+            <div>
+              <strong>Prescription Policy</strong>
+              <p>In compliance with <strong>Kenyan Law (Cap 244)</strong>, all Prescription-Only Medicines (POM) will only be dispensed upon presentation of a valid, original prescription from a registered medical practitioner. We do not dispense POM without a verified prescription.</p>
+            </div>
+          </li>
+          <li>
+            <div class="tm-icon tm-amber">03</div>
+            <div>
+              <strong>Order Fulfillment</strong>
+              <p>Orders placed via WhatsApp are subject to <strong>stock availability</strong> and verification by our licensed pharmaceutical technologists. Prices are subject to change without notice. Final pricing will be confirmed before processing your order.</p>
+            </div>
+          </li>
+          <li>
+            <div class="tm-icon tm-green">04</div>
+            <div>
+              <strong>Privacy &amp; Confidentiality</strong>
+              <p>By uploading your prescription, you consent to our staff viewing your medical information for the <strong>sole purpose of processing your order</strong>. We maintain strict patient confidentiality. Your data is never sold or shared with third parties.</p>
+            </div>
+          </li>
+          <li>
+            <div class="tm-icon tm-purple">&#9878;&#65039;</div>
+            <div>
+              <strong>Regulatory Compliance</strong>
+              <p>This facility is a licensed pharmacy registered with the <strong>Pharmacy and Poisons Board (PPB) Kenya</strong> under the Pharmacy and Poisons Act, Cap 244. All operations comply fully with Kenyan pharmaceutical law. &nbsp;<span style="color:var(--amber);font-weight:600">PPB License No: [Insert Here]</span></p>
+            </div>
+          </li>
+        </ul>
+
+      </div>
+      <div class="terms-modal-footer">
+        <button class="btn-modal camera" onclick="closeTermsModal()" style="max-width:200px;margin:0 auto">Close</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end storefrontPage -->
+
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║           ADMIN LOGIN GATE              ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="loginScreen" style="display:none">
+  <div class="login-card">
+    <div class="login-icon">🏥</div>
+    <h1>Staff Login</h1>
+    <p>MediQuick Admin Dashboard</p>
+    <div class="lform-group">
+      <label>Username</label>
+      <input class="form-input" type="text" id="loginUser" placeholder="admin" autocomplete="username"/>
+    </div>
+    <div class="lform-group">
+      <label>Password</label>
+      <div class="pw-wrap">
+        <input class="form-input" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px"/>
+        <button type="button" class="pw-eye" onclick="togglePwVisibility()" title="Show/hide password" aria-label="Toggle password visibility">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg id="eyeOffIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <button class="btn-login" onclick="doLogin()">Sign In →</button>
+    <div class="login-error" id="loginError">Incorrect username or password.</div>
+    <p style="margin-top:14px;font-size:12px;color:#94a3b8">Default login: <strong>admin</strong> / <strong>admin123</strong></p>
+    <p style="margin-top:8px">
+      <a href="#" onclick="event.preventDefault();hideAdminGate()" style="font-size:13px;color:var(--blue)">← Back to Store</a>
+    </p>
+  </div>
+</div>
+
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║         ADMIN DASHBOARD PAGE            ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<div id="adminPage">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">💊</div>
+      <div>
+        <div class="sidebar-logo-name">MediQuick</div>
+        <div class="sidebar-logo-sub">Admin Panel</div>
+      </div>
+    </div>
+
+    <div class="nav-label">Menu</div>
+    <button class="nav-item active" id="nav-dashboard" onclick="showAdminSection('dashboard')">📊 Dashboard</button>
+    <button class="nav-item" id="nav-products"  onclick="showAdminSection('products')">📦 Products</button>
+    <button class="nav-item" id="nav-add"        onclick="showAdminSection('add')">➕ Add Product</button>
+
+    <div style="margin-top:12px">
+      <div class="nav-label">Links</div>
+      <button class="nav-item" onclick="goToStore()">🛒 View Storefront</button>
+      <a class="nav-item" id="sidebarWaLink" href="#" target="_blank">💬 WhatsApp</a>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="doLogout()">⬅ Logout</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="admin-main">
+    <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+
+    <!-- ── DASHBOARD ── -->
+    <section class="admin-section active" id="sec-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Welcome back! Here's your store overview.</div>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Products</div><div class="stat-value" id="statTotal">–</div></div>
+        <div class="stat-card"><div class="stat-label">In Stock</div><div class="stat-value" id="statIn" style="color:var(--green-dark)">–</div></div>
+        <div class="stat-card"><div class="stat-label">Out of Stock</div><div class="stat-value" id="statOut" style="color:var(--amber)">–</div></div>
+        <div class="stat-card"><div class="stat-label">Categories</div><div class="stat-value" id="statCats">–</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Recent Products</h2></div>
+        <div class="tbl-wrap"><table class="product-table" id="dashTable"></table></div>
+      </div>
+    </section>
+
+    <!-- ── PRODUCTS ── -->
+    <section class="admin-section" id="sec-products">
+      <div class="page-header">
+        <div>
+          <div class="page-title">All Products</div>
+          <div class="page-sub">Manage your product catalogue.</div>
+        </div>
+        <div class="tbl-search">
+          <svg class="ico" style="fill:#94a3b8" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" placeholder="Search products…" oninput="filterAdminTable(this.value)"/>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap"><table class="product-table" id="productsTable"></table></div>
+      </div>
+    </section>
+
+    <!-- ── ADD PRODUCT ── -->
+    <section class="admin-section" id="sec-add">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Add Product</div>
+          <div class="page-sub">Add a new medicine to your storefront.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-body">
+          <form class="add-form" id="addProductForm" onsubmit="handleAddProduct(event)">
+            <div class="fg">
+              <label>Drug / Product Name *</label>
+              <input type="text" id="pName" placeholder="e.g. Panadol Extra 500mg" required/>
+            </div>
+            <div class="fg">
+              <label>Price (KES) *</label>
+              <input type="number" id="pPrice" placeholder="e.g. 50" min="1" required/>
+            </div>
+            <div class="fg">
+              <label>Category *</label>
+              <select id="pCategory" required>
+                <option value="">Select category…</option>
+                <option>Painkillers</option><option>Antibiotics</option>
+                <option>Baby Care</option><option>Vitamins</option>
+                <option>Skin Care</option><option>Allergy</option>
+                <option>Digestive</option><option>Heart</option>
+                <option>Eye Care</option><option>Oral Care</option>
+                <option>General</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Stock Status</label>
+              <select id="pStock">
+                <option value="true">In Stock</option>
+                <option value="false">Out of Stock</option>
+              </select>
+            </div>
+            <div class="fg full">
+              <label>Product Image (optional)</label>
+              <div class="img-upload-area" id="uploadArea">
+                <input type="file" id="pImage" accept="image/*" onchange="previewAdminImage(this)"/>
+                <div id="uploadPlaceholder">
+                  <div style="font-size:28px">📷</div>
+                  <div class="upload-label">Click to upload image</div>
+                </div>
+                <img id="adminImgPreview" class="img-preview-thumb"/>
+              </div>
+            </div>
+            <button class="btn-add" type="submit" id="addBtn">Add Product to Store</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</div><!-- end adminPage -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ╔══════════════════════════════════════════╗ -->
+<!-- ║              MAIN SCRIPT                ║ -->
+<!-- ╚══════════════════════════════════════════╝ -->
+<script>
+// ╔═══════════════════════════════════════════════╗
+// ║  ⚠️  CHANGE THESE TWO SETTINGS              ║
+// ╚═══════════════════════════════════════════════╝
+const WA_NUMBER   = "254101514612"; // WhatsApp number without + or spaces
+const ADMIN_USER  = "admin";
+const ADMIN_PASS  = "admin123";
+// ════════════════════════════════════════════════
+
+const EMOJI_MAP = {
+  'Painkillers':'💊','Antibiotics':'💉','Baby Care':'🍼','Vitamins':'🌿',
+  'Skin Care':'✨','Allergy':'🤧','Digestive':'🫃','Heart':'❤️',
+  'Eye Care':'👁️','Oral Care':'🦷','General':'🏥'
+};
+
+const DEMO_PRODUCTS = [
+  {id:'d1',name:'Panadol Extra',category:'Painkillers',price:50,inStock:true,image:''},
+  {id:'d2',name:'Amoxicillin 500mg',category:'Antibiotics',price:180,inStock:true,image:''},
+  {id:'d3',name:'Pampers Size 3',category:'Baby Care',price:1200,inStock:true,image:''},
+  {id:'d4',name:'Vitamin C 1000mg',category:'Vitamins',price:350,inStock:false,image:''},
+  {id:'d5',name:'Cetirizine 10mg',category:'Allergy',price:80,inStock:true,image:''},
+  {id:'d6',name:'Gaviscon Liquid',category:'Digestive',price:450,inStock:true,image:''},
+  {id:'d7',name:'Ibuprofen 400mg',category:'Painkillers',price:60,inStock:true,image:''},
+  {id:'d8',name:'Johnson Baby Lotion',category:'Baby Care',price:320,inStock:true,image:''},
+  {id:'d9',name:'Atorvastatin 20mg',category:'Heart',price:290,inStock:false,image:''},
+  {id:'d10',name:'Daktarin Cream',category:'Skin Care',price:210,inStock:true,image:''},
+  {id:'d11',name:'ORS Sachets x10',category:'Digestive',price:120,inStock:true,image:''},
+  {id:'d12',name:'Zinc Drops',category:'Baby Care',price:160,inStock:true,image:''},
+];
+
+// ── State ────────────────────────────────────────
+let allProducts = [];
+let activeCategory = 'All';
+let uploadedImageURL = '';
+let fbReady = false;
+
+// ── Init WhatsApp links ─────────────────────────
+document.getElementById('headerWaLink').href = `https://wa.me/${WA_NUMBER}`;
+document.getElementById('sidebarWaLink').href = `https://wa.me/${WA_NUMBER}`;
+document.getElementById('footerPhone').href = `tel:+${WA_NUMBER}`;
+// Update the footer WhatsApp link in the new footer
+const footerWaLinks = document.querySelectorAll('.footer-wa');
+footerWaLinks.forEach(el => el.href = `https://wa.me/${WA_NUMBER}`);
+
+// ════════════════════════════════════════════════
+// STOREFRONT LOGIC
+// ════════════════════════════════════════════════
+async function loadProducts() {
+  showSkeletons();
+  try {
+    if (window.__fbReady && window.__db) {
+      const { collection, getDocs } = window.__firebase;
+      const snap = await getDocs(collection(window.__db, 'products'));
+      allProducts = snap.docs.map(d => ({id:d.id,...d.data()}));
+    }
+  } catch(e) { /* fall through */ }
+  if (!allProducts.length) allProducts = DEMO_PRODUCTS;
+  buildCategoryBar();
+  applyFilters();
+}
+
+function buildCategoryBar() {
+  const cats = ['All', ...new Set(allProducts.map(p => p.category))];
+  document.getElementById('catBar').innerHTML = cats.map(c =>
+    `<button class="cat-btn${c===activeCategory?' active':''}" onclick="setCat('${c}')">${c}</button>`
+  ).join('');
+}
+
+function setCat(cat) {
+  activeCategory = cat;
+  buildCategoryBar();
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = allProducts.filter(p => {
+    const matchCat = activeCategory === 'All' || p.category === activeCategory;
+    const matchQ = !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  renderProducts(filtered);
+}
+
+function renderProducts(products) {
+  const grid = document.getElementById('productGrid');
+  const count = document.getElementById('resultsCount');
+  count.textContent = `${products.length} product${products.length!==1?'s':''} found`;
+  if (!products.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">🔍</div>
+      <h3>No products found</h3>
+      <p>Try a different search or category</p>
+    </div>`;
+    return;
+  }
+  const waSVG = `<svg style="width:15px;height:15px;fill:#fff" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>`;
+  grid.innerHTML = products.map((p, i) => {
+    const emoji = EMOJI_MAP[p.category] || '💊';
+    const img = p.image
+      ? `<img class="card-img" src="${p.image}" alt="${p.name}" loading="lazy"/>`
+      : `<div class="card-img-placeholder">${emoji}</div>`;
+    const footer = p.inStock
+      ? `<a class="btn-order" href="${buildWALink(p)}" target="_blank">${waSVG} Order on WhatsApp</a>`
+      : `<span class="oos-badge">Out of Stock</span>`;
+    return `<div class="product-card" style="animation-delay:${i*0.04}s">
+      ${img}
+      <div class="card-body">
+        <span class="card-cat">${p.category}</span>
+        <div class="card-name">${p.name}</div>
+        <div class="card-price">KES ${Number(p.price).toLocaleString()}</div>
+      </div>
+      <div class="card-footer">${footer}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildWALink(product) {
+  const msg = encodeURIComponent(
+    `Hi MediQuick! 👋\n\nI'd like to order:\n*${product.name}* – KES ${product.price}\n\nMy delivery location is: [Type here]\n\nThank you!`
+  );
+  return `https://wa.me/${WA_NUMBER}?text=${msg}`;
+}
+
+function showSkeletons() {
+  document.getElementById('productGrid').innerHTML = Array(8).fill(`
+    <div class="skel-card">
+      <div class="skel-img skeleton"></div>
+      <div class="skel-body">
+        <div class="skel-line skeleton" style="width:50%"></div>
+        <div class="skel-line skeleton" style="width:80%"></div>
+        <div class="skel-line skeleton" style="width:35%"></div>
+      </div>
+    </div>`).join('');
+}
+
+// Prescription modal
+function openTermsModal() { document.getElementById('termsModal').classList.add('open'); }
+function closeTermsModal() { document.getElementById('termsModal').classList.remove('open'); }
+function openRxModal() { document.getElementById('rxModal').classList.add('open'); }
+function closeRxModal() { document.getElementById('rxModal').classList.remove('open'); }
+function openRxWA() {
+  const msg = encodeURIComponent(
+    `Hi MediQuick! 👋 I'd like to send my prescription for a quote.\nPlease find the image attached.\n\nMy name: [Your Name]\nDelivery location: [Your Location]`
+  );
+  window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, '_blank');
+  closeRxModal();
+}
+
+// ════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ════════════════════════════════════════════════
+function showPage(name) {
+  document.getElementById('storefrontPage').classList.remove('active');
+  document.getElementById('adminPage').classList.remove('active');
+  document.getElementById('loginScreen').style.display = 'none';
+
+  if (name === 'store') {
+    document.getElementById('storefrontPage').classList.add('active');
+  } else if (name === 'admin') {
+    document.getElementById('adminPage').classList.add('active');
+  } else if (name === 'login') {
+    // Show storefront dimmed behind login overlay
+    document.getElementById('storefrontPage').classList.add('active');
+    document.getElementById('loginScreen').style.display = 'flex';
+    // Clear fields each time
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginUser').value = '';
+    // Reset eye icon to hidden state
+    document.getElementById('loginPass').type = 'password';
+    document.getElementById('eyeIcon').style.display = 'block';
+    document.getElementById('eyeOffIcon').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+    setTimeout(() => document.getElementById('loginUser').focus(), 100);
+  }
+}
+
+function showAdminGate() { showPage('login'); }
+function hideAdminGate() { showPage('store'); }
+function goToStore() { showPage('store'); }
+
+// ════════════════════════════════════════════════
+// ADMIN AUTH
+// ════════════════════════════════════════════════
+function togglePwVisibility() {
+  const input = document.getElementById('loginPass');
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  document.getElementById('eyeIcon').style.display    = isHidden ? 'none'  : 'block';
+  document.getElementById('eyeOffIcon').style.display = isHidden ? 'block' : 'none';
+  input.focus();
+}
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    sessionStorage.setItem('mq_admin','1');
+    showPage('admin');
+    loadAdminProducts();
+    showAdminSection('dashboard');
+  } else {
+    const err = document.getElementById('loginError');
+    err.style.display = 'block';
+    setTimeout(() => err.style.display='none', 3000);
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('mq_admin');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  showPage('store');
+}
+
+// Check existing session on load
+if (sessionStorage.getItem('mq_admin') === '1') {
+  // wait for firebase ready before jumping to admin
+  window.addEventListener('firebaseReady', () => {
+    fbReady = true;
+    if (sessionStorage.getItem('mq_admin') === '1') loadAdminProducts();
+  });
+}
+
+window.addEventListener('firebaseReady', () => { fbReady = true; loadProducts(); });
+
+// ════════════════════════════════════════════════
+// ADMIN DASHBOARD
+// ════════════════════════════════════════════════
+let adminProducts = [];
+
+function showAdminSection(name) {
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item[id^="nav-"]').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
+  if (name === 'products') renderAdminTable(adminProducts);
+  if (name === 'dashboard') renderAdminDashboard();
+  // Close sidebar on mobile
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+async function loadAdminProducts() {
+  try {
+    if (window.__fbReady && window.__db) {
+      const { collection, getDocs } = window.__firebase;
+      const snap = await getDocs(collection(window.__db, 'products'));
+      adminProducts = snap.docs.map(d => ({id:d.id,...d.data()}));
+    }
+  } catch(e) { /* fall through */ }
+  if (!adminProducts.length) adminProducts = [...DEMO_PRODUCTS];
+  renderAdminDashboard();
+}
+
+function renderAdminDashboard() {
+  document.getElementById('statTotal').textContent = adminProducts.length;
+  document.getElementById('statIn').textContent = adminProducts.filter(p=>p.inStock).length;
+  document.getElementById('statOut').textContent = adminProducts.filter(p=>!p.inStock).length;
+  document.getElementById('statCats').textContent = new Set(adminProducts.map(p=>p.category)).size;
+  renderTableInto('dashTable', [...adminProducts].slice(-5).reverse(), true);
+}
+
+function renderAdminTable(prods) {
+  renderTableInto('productsTable', prods, false);
+}
+
+function renderTableInto(tableId, data, mini) {
+  const t = document.getElementById(tableId);
+  if (!data.length) {
+    t.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#94a3b8">No products yet.</td></tr>';
+    return;
+  }
+  t.innerHTML = `<thead><tr>
+    <th>Product</th><th>Category</th><th>Price</th><th>Status</th>
+    ${mini ? '' : '<th>Actions</th>'}
+  </tr></thead><tbody>
+    ${data.map(p => `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="tbl-thumb">${p.image ? `<img src="${p.image}" alt="">` : (EMOJI_MAP[p.category]||'💊')}</div>
+        <span class="tbl-name">${p.name}</span>
+      </div></td>
+      <td><span class="tbl-cat">${p.category}</span></td>
+      <td><span class="tbl-price">KES ${Number(p.price).toLocaleString()}</span></td>
+      <td><span class="${p.inStock?'badge-in':'badge-out'}">${p.inStock?'✓ In Stock':'Out of Stock'}</span></td>
+      ${mini ? '' : `<td><div class="tbl-actions">
+        <button class="btn-tbl ${p.inStock?'btn-toggle-in':'btn-toggle-out'}" onclick="toggleStock('${p.id}')">
+          ${p.inStock ? 'Mark OOS' : 'Mark In Stock'}
+        </button>
+        <button class="btn-tbl btn-del" onclick="deleteProduct('${p.id}','${p.name.replace(/'/g,"\\'")}')">Delete</button>
+      </div></td>`}
+    </tr>`).join('')}
+  </tbody>`;
+}
+
+function filterAdminTable(q) {
+  const filtered = adminProducts.filter(p =>
+    p.name.toLowerCase().includes(q.toLowerCase()) ||
+    p.category.toLowerCase().includes(q.toLowerCase())
+  );
+  renderAdminTable(filtered);
+}
+
+// Add product
+let pendingImageFile = null;
+
+function previewAdminImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  pendingImageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Compress image before storing
+    compressImage(e.target.result, 600, 0.7, compressed => {
+      const preview = document.getElementById('adminImgPreview');
+      preview.src = compressed;
+      preview.style.display = 'block';
+      document.getElementById('uploadPlaceholder').style.display = 'none';
+      uploadedImageURL = compressed; // compressed base64
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+// Compress image to a smaller base64 string so it fits in Firestore (1MB limit per doc)
+function compressImage(dataUrl, maxWidth, quality, callback) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    let w = img.width, h = img.height;
+    if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.src = dataUrl;
+}
+
+async function handleAddProduct(e) {
+  e.preventDefault();
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const product = {
+    id: 'local_' + Date.now(),
+    name: document.getElementById('pName').value.trim(),
+    price: Number(document.getElementById('pPrice').value),
+    category: document.getElementById('pCategory').value,
+    inStock: document.getElementById('pStock').value === 'true',
+    image: uploadedImageURL, // compressed base64 — no Storage needed
+    createdAt: new Date().toISOString()
+  };
+
+  // ── Update UI instantly ──
+  adminProducts.unshift(product);
+  allProducts.unshift(product);
+  renderAdminDashboard();
+  showToast('✓ Product added!', 'success');
+
+  // Reset form immediately
+  e.target.reset();
+  document.getElementById('adminImgPreview').style.display = 'none';
+  document.getElementById('uploadPlaceholder').style.display = 'flex';
+  btn.disabled = false;
+  btn.textContent = 'Add Product to Store';
+  uploadedImageURL = '';
+  pendingImageFile = null;
+
+  // ── Save to Firestore in background ──
+  if (window.__fbReady && window.__db) {
+    (async () => {
+      try {
+        const { addDoc, collection } = window.__firebase;
+        const docRef = await addDoc(collection(window.__db, 'products'), {
+          name:      product.name,
+          price:     product.price,
+          category:  product.category,
+          inStock:   product.inStock,
+          image:     product.image,
+          createdAt: product.createdAt
+        });
+        // Replace temp local ID with real Firestore ID
+        product.id = docRef.id;
+      } catch(err) {
+        console.warn('Firestore save error:', err.message);
+        showToast('Saved locally only. Check Firestore rules.', '');
+      }
+    })();
+  }
+}
+
+// Toggle stock — instant UI, background Firebase sync
+async function toggleStock(id) {
+  const idx = adminProducts.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  const newVal = !adminProducts[idx].inStock;
+
+  // Update UI instantly
+  adminProducts[idx].inStock = newVal;
+  const sfIdx = allProducts.findIndex(p => p.id === id);
+  if (sfIdx > -1) allProducts[sfIdx].inStock = newVal;
+  renderAdminTable(adminProducts);
+  renderAdminDashboard();
+  showToast(newVal ? '✓ Marked as In Stock' : 'Marked as Out of Stock', 'success');
+
+  // Sync to Firebase in background
+  if (window.__fbReady && window.__db && !id.startsWith('local_')) {
+    const { doc, updateDoc } = window.__firebase;
+    updateDoc(doc(window.__db, 'products', id), { inStock: newVal })
+      .catch(err => console.warn('Toggle sync failed:', err.message));
+  }
+}
+
+// Delete product — instant UI, background Firebase sync
+async function deleteProduct(id, name) {
+  if (!confirm(`Delete "${name}"?\nThis cannot be undone.`)) return;
+
+  // Update UI instantly
+  adminProducts = adminProducts.filter(p => p.id !== id);
+  allProducts   = allProducts.filter(p => p.id !== id);
+  renderAdminTable(adminProducts);
+  renderAdminDashboard();
+  showToast('Product deleted.', 'success');
+
+  // Sync to Firebase in background
+  if (window.__fbReady && window.__db && !id.startsWith('local_')) {
+    const { doc, deleteDoc } = window.__firebase;
+    deleteDoc(doc(window.__db, 'products', id))
+      .catch(err => console.warn('Delete sync failed:', err.message));
+  }
+}
+
+// Toast
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.className = 'toast', 3200);
+}
+
+// Load storefront on start
+loadProducts();
+</script>
+</body>
+</html>
