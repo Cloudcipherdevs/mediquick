@@ -11,6 +11,7 @@
 <script type="module">
   import { initializeApp }                                                        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAvXOUqDHO24q5mxRsE2LHvxSC3tAZmgWQ",
@@ -22,16 +23,24 @@
   };
 
   try {
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
-    window.__db = db;
-    window.__firebase = { collection, addDoc, getDocs, deleteDoc, doc, updateDoc };
-    window.__fbReady = true;
+    const app  = initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
+    window.__db  = db;
+    window.__auth = auth;
+    window.__firebase = { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, signInWithEmailAndPassword, signOut };
+    window.__fbReady  = true;
+
+    // ── Lock Firestore writes to authenticated admin only ──
+    onAuthStateChanged(auth, user => {
+      window.__currentUser = user || null;
+      window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
+    });
   } catch(e) {
     console.warn('Firebase init failed:', e);
     window.__fbReady = false;
+    window.dispatchEvent(new Event('firebaseReady'));
   }
-  window.dispatchEvent(new Event('firebaseReady'));
 </script>
 
 <style>
@@ -440,8 +449,8 @@ svg.ico{width:16px;height:16px;fill:currentColor;flex-shrink:0}
     <h1>Staff Login</h1>
     <p>MediQuick Admin Dashboard</p>
     <div class="lform-group">
-      <label>Username</label>
-      <input class="form-input" type="text" id="loginUser" placeholder="admin" autocomplete="username"/>
+      <label>Email Address</label>
+      <input class="form-input" type="email" id="loginEmail" placeholder="admin@mediquick.co.ke" autocomplete="email"/>
     </div>
     <div class="lform-group">
       <label>Password</label>
@@ -460,9 +469,8 @@ svg.ico{width:16px;height:16px;fill:currentColor;flex-shrink:0}
         </button>
       </div>
     </div>
-    <button class="btn-login" onclick="doLogin()">Sign In →</button>
-    <div class="login-error" id="loginError">Incorrect username or password.</div>
-    <p style="margin-top:14px;font-size:12px;color:#94a3b8">Default login: <strong>admin</strong> / <strong>admin123</strong></p>
+    <button class="btn-login" onclick="doLogin()" id="loginBtn">Sign In →</button>
+    <div class="login-error" id="loginError">Incorrect email or password.</div>
     <p style="margin-top:8px">
       <a href="#" onclick="event.preventDefault();hideAdminGate()" style="font-size:13px;color:var(--blue)">← Back to Store</a>
     </p>
@@ -608,11 +616,9 @@ svg.ico{width:16px;height:16px;fill:currentColor;flex-shrink:0}
 <!-- ╚══════════════════════════════════════════╝ -->
 <script>
 // ╔═══════════════════════════════════════════════╗
-// ║  ⚠️  CHANGE THESE TWO SETTINGS              ║
+// ║         ONLY CHANGE THIS                     ║
 // ╚═══════════════════════════════════════════════╝
-const WA_NUMBER   = "254101514612"; // WhatsApp number without + or spaces
-const ADMIN_USER  = "admin";
-const ADMIN_PASS  = "admin123";
+const WA_NUMBER = "254101514612"; // WhatsApp number without + or spaces
 // ════════════════════════════════════════════════
 
 const EMOJI_MAP = {
@@ -640,7 +646,6 @@ const DEMO_PRODUCTS = [
 let allProducts = [];
 let activeCategory = 'All';
 let uploadedImageURL = '';
-let fbReady = false;
 
 // ── Init WhatsApp links ─────────────────────────
 document.getElementById('headerWaLink').href = `https://wa.me/${WA_NUMBER}`;
@@ -768,18 +773,15 @@ function showPage(name) {
   } else if (name === 'admin') {
     document.getElementById('adminPage').classList.add('active');
   } else if (name === 'login') {
-    // Show storefront dimmed behind login overlay
     document.getElementById('storefrontPage').classList.add('active');
     document.getElementById('loginScreen').style.display = 'flex';
-    // Clear fields each time
-    document.getElementById('loginPass').value = '';
-    document.getElementById('loginUser').value = '';
-    // Reset eye icon to hidden state
-    document.getElementById('loginPass').type = 'password';
-    document.getElementById('eyeIcon').style.display = 'block';
+    document.getElementById('loginPass').value  = '';
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPass').type   = 'password';
+    document.getElementById('eyeIcon').style.display    = 'block';
     document.getElementById('eyeOffIcon').style.display = 'none';
     document.getElementById('loginError').style.display = 'none';
-    setTimeout(() => document.getElementById('loginUser').focus(), 100);
+    setTimeout(() => document.getElementById('loginEmail').focus(), 100);
   }
 }
 
@@ -788,7 +790,7 @@ function hideAdminGate() { showPage('store'); }
 function goToStore() { showPage('store'); }
 
 // ════════════════════════════════════════════════
-// ADMIN AUTH
+// ADMIN AUTH — Firebase Authentication
 // ════════════════════════════════════════════════
 function togglePwVisibility() {
   const input = document.getElementById('loginPass');
@@ -799,38 +801,56 @@ function togglePwVisibility() {
   input.focus();
 }
 
-function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  if (u === ADMIN_USER && p === ADMIN_PASS) {
-    sessionStorage.setItem('mq_admin','1');
-    showPage('admin');
-    loadAdminProducts();
-    showAdminSection('dashboard');
-  } else {
-    const err = document.getElementById('loginError');
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const btn   = document.getElementById('loginBtn');
+  const err   = document.getElementById('loginError');
+
+  if (!email || !pass) {
+    err.textContent = 'Please enter your email and password.';
     err.style.display = 'block';
-    setTimeout(() => err.style.display='none', 3000);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  err.style.display = 'none';
+
+  try {
+    const { signInWithEmailAndPassword } = window.__firebase;
+    await signInWithEmailAndPassword(window.__auth, email, pass);
+    // onAuthStateChanged will fire and handle the rest
+  } catch(e) {
+    err.textContent = 'Incorrect email or password. Try again.';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign In →';
   }
 }
 
-function doLogout() {
-  sessionStorage.removeItem('mq_admin');
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
+async function doLogout() {
+  const { signOut } = window.__firebase;
+  await signOut(window.__auth);
   showPage('store');
 }
 
-// Check existing session on load
-if (sessionStorage.getItem('mq_admin') === '1') {
-  // wait for firebase ready before jumping to admin
-  window.addEventListener('firebaseReady', () => {
-    fbReady = true;
-    if (sessionStorage.getItem('mq_admin') === '1') loadAdminProducts();
-  });
-}
-
-window.addEventListener('firebaseReady', () => { fbReady = true; loadProducts(); });
+// ── React to Firebase auth state changes ──
+window.addEventListener('authStateChanged', (e) => {
+  const user = e.detail;
+  if (user) {
+    // User is signed in — go straight to admin
+    document.getElementById('loginBtn').disabled    = false;
+    document.getElementById('loginBtn').textContent = 'Sign In →';
+    showPage('admin');
+    loadAdminProducts();
+    showAdminSection('dashboard');
+    loadProducts(); // also refresh storefront
+  } else {
+    // Signed out — stay on store
+    loadProducts();
+  }
+});
 
 // ════════════════════════════════════════════════
 // ADMIN DASHBOARD
@@ -975,8 +995,8 @@ async function handleAddProduct(e) {
   uploadedImageURL = '';
   pendingImageFile = null;
 
-  // ── Save to Firestore in background ──
-  if (window.__fbReady && window.__db) {
+  // ── Save to Firestore in background (only if authenticated) ──
+  if (window.__fbReady && window.__db && window.__currentUser) {
     (async () => {
       try {
         const { addDoc, collection } = window.__firebase;
@@ -1012,8 +1032,8 @@ async function toggleStock(id) {
   renderAdminDashboard();
   showToast(newVal ? '✓ Marked as In Stock' : 'Marked as Out of Stock', 'success');
 
-  // Sync to Firebase in background
-  if (window.__fbReady && window.__db && !id.startsWith('local_')) {
+  // Sync to Firebase in background (only if authenticated)
+  if (window.__fbReady && window.__db && window.__currentUser && !id.startsWith('local_')) {
     const { doc, updateDoc } = window.__firebase;
     updateDoc(doc(window.__db, 'products', id), { inStock: newVal })
       .catch(err => console.warn('Toggle sync failed:', err.message));
@@ -1031,8 +1051,8 @@ async function deleteProduct(id, name) {
   renderAdminDashboard();
   showToast('Product deleted.', 'success');
 
-  // Sync to Firebase in background
-  if (window.__fbReady && window.__db && !id.startsWith('local_')) {
+  // Sync to Firebase in background (only if authenticated)
+  if (window.__fbReady && window.__db && window.__currentUser && !id.startsWith('local_')) {
     const { doc, deleteDoc } = window.__firebase;
     deleteDoc(doc(window.__db, 'products', id))
       .catch(err => console.warn('Delete sync failed:', err.message));
@@ -1047,9 +1067,6 @@ function showToast(msg, type = '') {
   setTimeout(() => t.className = 'toast', 3200);
 }
 
-// Load storefront on start
-loadProducts();
 </script>
 </body>
-
 </html>
