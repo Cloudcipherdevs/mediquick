@@ -4,11 +4,19 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MediQuick Pharmacy – Nakuru</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
 
-<!-- Firebase SDK -->
-<script type="module">
+<!-- Preconnect to Firebase domains so connection starts early -->
+<link rel="preconnect" href="https://firestore.googleapis.com"/>
+<link rel="preconnect" href="https://www.gstatic.com"/>
+
+<!-- Fonts load AFTER page — won't block render -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/></noscript>
+
+<!-- Firebase loads AFTER page paint — deferred -->
+<script defer type="module">
   import { initializeApp }                                                        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -26,16 +34,18 @@
     const app  = initializeApp(firebaseConfig);
     const db   = getFirestore(app);
     const auth = getAuth(app);
-    window.__db  = db;
+    window.__db   = db;
     window.__auth = auth;
     window.__firebase = { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, signInWithEmailAndPassword, signOut };
     window.__fbReady  = true;
 
-    // ── Lock Firestore writes to authenticated admin only ──
     onAuthStateChanged(auth, user => {
       window.__currentUser = user || null;
       window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
     });
+
+    // Firebase is ready — fetch real products and replace demo ones
+    window.dispatchEvent(new Event('firebaseReady'));
   } catch(e) {
     console.warn('Firebase init failed:', e);
     window.__fbReady = false;
@@ -59,9 +69,12 @@
   --shadow-md:0 4px 16px rgba(0,0,0,.10);
   --radius:14px;
   --sidebar-w:240px;
+  /* System font stack — shows instantly, Google Fonts replaces it when loaded */
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh}
+body{font-family:var(--font-body);background:var(--gray-50);color:var(--gray-800);min-height:100vh}
 
 /* ════════════════════════════════
    PAGE SWITCHER
@@ -658,19 +671,39 @@ footerWaLinks.forEach(el => el.href = `https://wa.me/${WA_NUMBER}`);
 // ════════════════════════════════════════════════
 // STOREFRONT LOGIC
 // ════════════════════════════════════════════════
+
+// ── Show demo products INSTANTLY on first paint ──
+allProducts = [...DEMO_PRODUCTS];
+buildCategoryBar();
+applyFilters();
+
+// ── Then fetch real products from Firestore in background ──
 async function loadProducts() {
-  showSkeletons();
+  if (!window.__fbReady || !window.__db) return;
   try {
-    if (window.__fbReady && window.__db) {
-      const { collection, getDocs } = window.__firebase;
-      const snap = await getDocs(collection(window.__db, 'products'));
-      allProducts = snap.docs.map(d => ({id:d.id,...d.data()}));
+    const { collection, getDocs } = window.__firebase;
+    const snap = await getDocs(collection(window.__db, 'products'));
+    if (!snap.empty) {
+      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Cache in localStorage so next visit is instant
+      try { localStorage.setItem('mq_products', JSON.stringify(allProducts)); } catch(e){}
+      buildCategoryBar();
+      applyFilters();
     }
-  } catch(e) { /* fall through */ }
-  if (!allProducts.length) allProducts = DEMO_PRODUCTS;
-  buildCategoryBar();
-  applyFilters();
+  } catch(e) {
+    console.warn('Could not load from Firestore:', e.message);
+  }
 }
+
+// Load from localStorage cache first if available (instant on repeat visits)
+try {
+  const cached = localStorage.getItem('mq_products');
+  if (cached) {
+    allProducts = JSON.parse(cached);
+    buildCategoryBar();
+    applyFilters();
+  }
+} catch(e) {}
 
 function buildCategoryBar() {
   const cats = ['All', ...new Set(allProducts.map(p => p.category))];
@@ -835,20 +868,21 @@ async function doLogout() {
   showPage('store');
 }
 
+// ── When Firebase loads, fetch real products (replaces demo silently) ──
+window.addEventListener('firebaseReady', () => { loadProducts(); });
+
 // ── React to Firebase auth state changes ──
 window.addEventListener('authStateChanged', (e) => {
   const user = e.detail;
   if (user) {
-    // User is signed in — go straight to admin
     document.getElementById('loginBtn').disabled    = false;
     document.getElementById('loginBtn').textContent = 'Sign In →';
     showPage('admin');
     loadAdminProducts();
     showAdminSection('dashboard');
-    loadProducts(); // also refresh storefront
+    loadProducts(); // refresh storefront with latest
   } else {
-    // Signed out — stay on store
-    loadProducts();
+    loadProducts(); // refresh on sign out
   }
 });
 
@@ -983,6 +1017,7 @@ async function handleAddProduct(e) {
   // ── Update UI instantly ──
   adminProducts.unshift(product);
   allProducts.unshift(product);
+  try { localStorage.setItem('mq_products', JSON.stringify(allProducts)); } catch(e){}
   renderAdminDashboard();
   showToast('✓ Product added!', 'success');
 
@@ -1028,6 +1063,7 @@ async function toggleStock(id) {
   adminProducts[idx].inStock = newVal;
   const sfIdx = allProducts.findIndex(p => p.id === id);
   if (sfIdx > -1) allProducts[sfIdx].inStock = newVal;
+  try { localStorage.setItem('mq_products', JSON.stringify(allProducts)); } catch(e){}
   renderAdminTable(adminProducts);
   renderAdminDashboard();
   showToast(newVal ? '✓ Marked as In Stock' : 'Marked as Out of Stock', 'success');
@@ -1047,6 +1083,7 @@ async function deleteProduct(id, name) {
   // Update UI instantly
   adminProducts = adminProducts.filter(p => p.id !== id);
   allProducts   = allProducts.filter(p => p.id !== id);
+  try { localStorage.setItem('mq_products', JSON.stringify(allProducts)); } catch(e){}
   renderAdminTable(adminProducts);
   renderAdminDashboard();
   showToast('Product deleted.', 'success');
